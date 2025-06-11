@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ChartConfig, SeriesItem } from "@/types/chart";
-import { Badge } from "@/components/ui/badge";
 
 interface SeriesPanelProps {
   series: SeriesItem[];
@@ -26,91 +25,105 @@ export const SeriesPanel = ({ series, config, onSeriesChange }: SeriesPanelProps
     onSeriesChange(updated);
   };
 
-  const getDisplaySeries = () => {
-    if (config.groupByVersion) {
-      return series;
-    } else {
-      // Group by variable - show only one entry per variable
-      const grouped = new Map<string, SeriesItem>();
-      series.forEach(s => {
-        if (!grouped.has(s.variable) || s.version === "Actuals") {
-          grouped.set(s.variable, s);
-        }
-      });
-      return Array.from(grouped.values());
-    }
+  const getGroupedSeries = () => {
+    const grouped = new Map<string, SeriesItem[]>();
+    series.forEach(s => {
+      if (!grouped.has(s.variable)) {
+        grouped.set(s.variable, []);
+      }
+      grouped.get(s.variable)!.push(s);
+    });
+    return grouped;
   };
 
-  const displaySeries = getDisplaySeries();
+  const groupedSeries = getGroupedSeries();
 
+  if (config.groupByVersion) {
+    // Original flat view
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Series Configuration</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Configure individual series by version
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {series.map((s) => (
+              <div key={s.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={s.color}
+                    onChange={(e) => changeSeriesColor(s.id, e.target.value)}
+                    className="w-8 h-8 rounded border border-border cursor-pointer"
+                  />
+                  <div>
+                    <Label className="text-sm font-medium">
+                      {s.variable} ({s.version})
+                    </Label>
+                  </div>
+                </div>
+                <Switch
+                  checked={s.visible}
+                  onCheckedChange={() => toggleSeriesVisibility(s.id)}
+                />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Grouped hierarchical view
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Series Configuration</CardTitle>
         <p className="text-sm text-muted-foreground">
-          {config.groupByVersion 
-            ? "Configure individual series by version" 
-            : "Configure unified variables (version grouping active)"
-          }
+          Configure series grouped by variable
         </p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {displaySeries.map((s) => (
-            <div key={s.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/5 transition-colors">
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={s.color}
-                  onChange={(e) => {
-                    if (config.groupByVersion) {
-                      changeSeriesColor(s.id, e.target.value);
-                    } else {
-                      // In grouped mode, update all series of the same variable
-                      const updated = series.map(item => 
-                        item.variable === s.variable ? { ...item, color: e.target.value } : item
-                      );
-                      onSeriesChange(updated);
-                    }
-                  }}
-                  className="w-8 h-8 rounded border border-border cursor-pointer"
-                />
-                <div>
-                  <Label className="text-sm font-medium">
-                    {config.groupByVersion ? s.variable : s.variable}
-                  </Label>
-                  {config.groupByVersion && (
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                      {s.version}
-                    </Badge>
-                  )}
-                </div>
+        <div className="space-y-6">
+          {Array.from(groupedSeries.entries()).map(([variable, variableSeries]) => (
+            <div key={variable} className="space-y-3">
+              <div className="font-medium text-foreground text-sm border-b border-border pb-2">
+                {variable}
               </div>
-              <Switch
-                checked={s.visible}
-                onCheckedChange={() => {
-                  if (config.groupByVersion) {
-                    toggleSeriesVisibility(s.id);
-                  } else {
-                    // In grouped mode, toggle all series of the same variable
-                    const updated = series.map(item => 
-                      item.variable === s.variable ? { ...item, visible: !s.visible } : item
-                    );
-                    onSeriesChange(updated);
-                  }
-                }}
-              />
+              <div className="space-y-2 pl-4">
+                {variableSeries.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between p-2 rounded-md border border-border/50 hover:bg-accent/5 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={s.color}
+                        onChange={(e) => changeSeriesColor(s.id, e.target.value)}
+                        className="w-6 h-6 rounded border border-border cursor-pointer"
+                      />
+                      <Label className="text-sm text-muted-foreground">
+                        {s.version}
+                      </Label>
+                    </div>
+                    <Switch
+                      checked={s.visible}
+                      onCheckedChange={() => toggleSeriesVisibility(s.id)}
+                      className="scale-75"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
         
-        {!config.groupByVersion && (
-          <div className="mt-4 bg-muted/30 p-3 rounded-md">
-            <p className="text-xs text-muted-foreground">
-              ⚡ Grouped mode: Changes apply to all versions of each variable
-            </p>
-          </div>
-        )}
+        <div className="mt-4 bg-muted/30 p-3 rounded-md">
+          <p className="text-xs text-muted-foreground">
+            💡 In grouped mode, the chart shows one line per variable using data from the highest priority visible version
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

@@ -17,10 +17,10 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
     if (config.groupByVersion) {
       return visibleSeries;
     } else {
-      // Group by variable - use color of first version (typically Actuals)
+      // Group by variable - show one line per variable using the first visible version's color
       const grouped = new Map<string, SeriesItem>();
       visibleSeries.forEach(s => {
-        if (!grouped.has(s.variable) || s.version === "Actuals") {
+        if (!grouped.has(s.variable)) {
           grouped.set(s.variable, s);
         }
       });
@@ -34,15 +34,54 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
     if (config.groupByVersion) {
       return `${series.variable}-${series.version}`;
     } else {
-      // For grouped mode, we'll need to combine data from all versions
+      // For grouped mode, we'll use the variable name and handle aggregation in data preparation
       return series.variable;
     }
   };
 
+  // Transform data for grouped mode
+  const transformedData = config.groupByVersion ? data : data.map(item => {
+    const newItem = { ...item };
+    
+    // For each variable, aggregate values from all visible versions
+    const variables = new Set(visibleSeries.map(s => s.variable));
+    variables.forEach(variable => {
+      const versionsForVariable = visibleSeries.filter(s => s.variable === variable);
+      // Use the first available version's value (prioritize Actuals, then Budget, then Forecast)
+      const priorityOrder = ['Actuals', 'Budget', 'Forecast'];
+      let valueUsed = null;
+      
+      for (const version of priorityOrder) {
+        const key = `${variable}-${version}`;
+        if (item[key] !== undefined) {
+          valueUsed = item[key];
+          break;
+        }
+      }
+      
+      // If no priority version found, use the first available
+      if (valueUsed === null) {
+        for (const versionSeries of versionsForVariable) {
+          const key = `${versionSeries.variable}-${versionSeries.version}`;
+          if (item[key] !== undefined) {
+            valueUsed = item[key];
+            break;
+          }
+        }
+      }
+      
+      if (valueUsed !== null) {
+        newItem[variable] = valueUsed;
+      }
+    });
+    
+    return newItem;
+  });
+
   return (
     <div className="w-full h-96">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+        <LineChart data={transformedData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
           <XAxis 
             dataKey="period" 
