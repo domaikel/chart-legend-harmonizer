@@ -10,6 +10,25 @@ interface ChartContainerProps {
   series: SeriesItem[];
 }
 
+// Helper function to generate color variations
+const generateColorVariations = (baseColor: string, count: number): string[] => {
+  const variations = [];
+  const hex = baseColor.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  
+  for (let i = 0; i < count; i++) {
+    const factor = 0.3 + (i * 0.7) / (count - 1); // Range from 30% to 100%
+    const newR = Math.round(r * factor);
+    const newG = Math.round(g * factor);
+    const newB = Math.round(b * factor);
+    variations.push(`#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`);
+  }
+  
+  return variations;
+};
+
 export const ChartContainer = ({ data, config, series }: ChartContainerProps) => {
   const visibleSeries = series.filter(s => s.visible);
   
@@ -17,14 +36,19 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
     if (config.groupByVersion) {
       return visibleSeries;
     } else {
-      // Group by variable - show one legend entry per variable
-      const grouped = new Map<string, SeriesItem>();
+      // Group by variable - show one legend entry per variable with color variations
+      const grouped = new Map<string, SeriesItem[]>();
       visibleSeries.forEach(s => {
         if (!grouped.has(s.variable)) {
-          grouped.set(s.variable, s);
+          grouped.set(s.variable, []);
         }
+        grouped.get(s.variable)!.push(s);
       });
-      return Array.from(grouped.values());
+      
+      return Array.from(grouped.entries()).map(([variable, variableSeries]) => ({
+        ...variableSeries[0],
+        versions: variableSeries
+      }));
     }
   };
 
@@ -32,18 +56,29 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
     if (config.groupByVersion) {
       return visibleSeries;
     } else {
-      // In grouped mode, we still show all series as lines but with unified colors
-      const variableColors = new Map<string, string>();
+      // Generate color variations for each variable's versions
+      const variableGroups = new Map<string, SeriesItem[]>();
       visibleSeries.forEach(s => {
-        if (!variableColors.has(s.variable)) {
-          variableColors.set(s.variable, s.color);
+        if (!variableGroups.has(s.variable)) {
+          variableGroups.set(s.variable, []);
         }
+        variableGroups.get(s.variable)!.push(s);
       });
       
-      return visibleSeries.map(s => ({
-        ...s,
-        color: variableColors.get(s.variable) || s.color
-      }));
+      const result: SeriesItem[] = [];
+      variableGroups.forEach((variableSeries, variable) => {
+        const baseColor = variableSeries[0].color;
+        const colorVariations = generateColorVariations(baseColor, variableSeries.length);
+        
+        variableSeries.forEach((s, index) => {
+          result.push({
+            ...s,
+            color: colorVariations[index]
+          });
+        });
+      });
+      
+      return result;
     }
   };
 
@@ -75,7 +110,7 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
           />
           {config.showLegend && (
             <Legend 
-              content={<CustomLegend config={config} series={legendSeries} />}
+              content={<CustomLegend config={config} series={legendSeries} chartSeries={chartSeries} />}
             />
           )}
           {chartSeries.map((s, index) => (

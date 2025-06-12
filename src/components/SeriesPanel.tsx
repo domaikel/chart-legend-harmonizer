@@ -26,7 +26,7 @@ export const SeriesPanel = ({ series, config, onSeriesChange }: SeriesPanelProps
       );
       onSeriesChange(updated);
     } else {
-      // Grouped mode - change color for all versions of the variable
+      // Grouped mode - change base color for all versions of the variable
       const targetSeries = series.find(s => s.id === id);
       if (targetSeries) {
         const updated = series.map(s => 
@@ -96,13 +96,13 @@ export const SeriesPanel = ({ series, config, onSeriesChange }: SeriesPanelProps
     );
   }
 
-  // Grouped mode - show one color per variable
+  // Grouped mode - show base color picker per variable
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Series Configuration</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Configure series grouped by variable
+          Configure base color for each variable (tones auto-generated)
         </p>
       </CardHeader>
       <CardContent>
@@ -126,7 +126,7 @@ export const SeriesPanel = ({ series, config, onSeriesChange }: SeriesPanelProps
                       {variable}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      {variableSeries.length} versions
+                      {variableSeries.length} versions (tones auto-generated)
                     </p>
                   </div>
                 </div>
@@ -142,7 +142,7 @@ export const SeriesPanel = ({ series, config, onSeriesChange }: SeriesPanelProps
         
         <div className="mt-4 bg-muted/30 p-3 rounded-md">
           <p className="text-xs text-muted-foreground">
-            💡 In grouped mode, all versions of a variable share the same color and visibility setting
+            💡 In grouped mode, different tones of your base color are automatically generated for each version
           </p>
         </div>
       </CardContent>
