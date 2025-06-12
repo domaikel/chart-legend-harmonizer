@@ -13,11 +13,11 @@ interface ChartContainerProps {
 export const ChartContainer = ({ data, config, series }: ChartContainerProps) => {
   const visibleSeries = series.filter(s => s.visible);
   
-  const getSeriesForChart = () => {
+  const getLegendSeries = () => {
     if (config.groupByVersion) {
       return visibleSeries;
     } else {
-      // Group by variable - show one line per variable using the first visible version's color
+      // Group by variable - show one legend entry per variable
       const grouped = new Map<string, SeriesItem>();
       visibleSeries.forEach(s => {
         if (!grouped.has(s.variable)) {
@@ -28,60 +28,36 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
     }
   };
 
-  const chartSeries = getSeriesForChart();
-
-  const getDataKey = (series: SeriesItem) => {
+  const getChartSeries = () => {
     if (config.groupByVersion) {
-      return `${series.variable}-${series.version}`;
+      return visibleSeries;
     } else {
-      // For grouped mode, we'll use the variable name and handle aggregation in data preparation
-      return series.variable;
+      // In grouped mode, we still show all series as lines but with unified colors
+      const variableColors = new Map<string, string>();
+      visibleSeries.forEach(s => {
+        if (!variableColors.has(s.variable)) {
+          variableColors.set(s.variable, s.color);
+        }
+      });
+      
+      return visibleSeries.map(s => ({
+        ...s,
+        color: variableColors.get(s.variable) || s.color
+      }));
     }
   };
 
-  // Transform data for grouped mode
-  const transformedData = config.groupByVersion ? data : data.map(item => {
-    const newItem = { ...item };
-    
-    // For each variable, aggregate values from all visible versions
-    const variables = new Set(visibleSeries.map(s => s.variable));
-    variables.forEach(variable => {
-      const versionsForVariable = visibleSeries.filter(s => s.variable === variable);
-      // Use the first available version's value (prioritize Actuals, then Budget, then Forecast)
-      const priorityOrder = ['Actuals', 'Budget', 'Forecast'];
-      let valueUsed = null;
-      
-      for (const version of priorityOrder) {
-        const key = `${variable}-${version}`;
-        if (item[key] !== undefined) {
-          valueUsed = item[key];
-          break;
-        }
-      }
-      
-      // If no priority version found, use the first available
-      if (valueUsed === null) {
-        for (const versionSeries of versionsForVariable) {
-          const key = `${versionSeries.variable}-${versionSeries.version}`;
-          if (item[key] !== undefined) {
-            valueUsed = item[key];
-            break;
-          }
-        }
-      }
-      
-      if (valueUsed !== null) {
-        newItem[variable] = valueUsed;
-      }
-    });
-    
-    return newItem;
-  });
+  const legendSeries = getLegendSeries();
+  const chartSeries = getChartSeries();
+
+  const getDataKey = (series: SeriesItem) => {
+    return `${series.variable}-${series.version}`;
+  };
 
   return (
     <div className="w-full h-96">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={transformedData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+        <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
           <XAxis 
             dataKey="period" 
@@ -99,7 +75,7 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
           />
           {config.showLegend && (
             <Legend 
-              content={<CustomLegend config={config} series={chartSeries} />}
+              content={<CustomLegend config={config} series={legendSeries} />}
             />
           )}
           {chartSeries.map((s, index) => (
