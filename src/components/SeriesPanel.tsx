@@ -19,8 +19,27 @@ export const SeriesPanel = ({ series, config, onSeriesChange }: SeriesPanelProps
   };
 
   const changeSeriesColor = (id: string, color: string) => {
+    if (config.groupByVersion) {
+      // Original mode - change individual series color
+      const updated = series.map(s => 
+        s.id === id ? { ...s, color } : s
+      );
+      onSeriesChange(updated);
+    } else {
+      // Grouped mode - change color for all versions of the variable
+      const targetSeries = series.find(s => s.id === id);
+      if (targetSeries) {
+        const updated = series.map(s => 
+          s.variable === targetSeries.variable ? { ...s, color } : s
+        );
+        onSeriesChange(updated);
+      }
+    }
+  };
+
+  const toggleVariableVisibility = (variable: string) => {
     const updated = series.map(s => 
-      s.id === id ? { ...s, color } : s
+      s.variable === variable ? { ...s, visible: !s.visible } : s
     );
     onSeriesChange(updated);
   };
@@ -77,7 +96,7 @@ export const SeriesPanel = ({ series, config, onSeriesChange }: SeriesPanelProps
     );
   }
 
-  // Grouped hierarchical view
+  // Grouped mode - show one color per variable
   return (
     <Card>
       <CardHeader>
@@ -87,41 +106,43 @@ export const SeriesPanel = ({ series, config, onSeriesChange }: SeriesPanelProps
         </p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
-          {Array.from(groupedSeries.entries()).map(([variable, variableSeries]) => (
-            <div key={variable} className="space-y-3">
-              <div className="font-medium text-foreground text-sm border-b border-border pb-2">
-                {variable}
-              </div>
-              <div className="space-y-2 pl-4">
-                {variableSeries.map((s) => (
-                  <div key={s.id} className="flex items-center justify-between p-2 rounded-md border border-border/50 hover:bg-accent/5 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={s.color}
-                        onChange={(e) => changeSeriesColor(s.id, e.target.value)}
-                        className="w-6 h-6 rounded border border-border cursor-pointer"
-                      />
-                      <Label className="text-sm text-muted-foreground">
-                        {s.version}
-                      </Label>
-                    </div>
-                    <Switch
-                      checked={s.visible}
-                      onCheckedChange={() => toggleSeriesVisibility(s.id)}
-                      className="scale-75"
-                    />
+        <div className="space-y-4">
+          {Array.from(groupedSeries.entries()).map(([variable, variableSeries]) => {
+            const firstSeries = variableSeries[0];
+            const allVisible = variableSeries.every(s => s.visible);
+            const someVisible = variableSeries.some(s => s.visible);
+            
+            return (
+              <div key={variable} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={firstSeries.color}
+                    onChange={(e) => changeSeriesColor(firstSeries.id, e.target.value)}
+                    className="w-8 h-8 rounded border border-border cursor-pointer"
+                  />
+                  <div>
+                    <Label className="text-sm font-medium">
+                      {variable}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {variableSeries.length} versions
+                    </p>
                   </div>
-                ))}
+                </div>
+                <Switch
+                  checked={allVisible}
+                  onCheckedChange={() => toggleVariableVisibility(variable)}
+                  className={someVisible && !allVisible ? "opacity-50" : ""}
+                />
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         
         <div className="mt-4 bg-muted/30 p-3 rounded-md">
           <p className="text-xs text-muted-foreground">
-            💡 In grouped mode, the chart shows one line per variable using data from the highest priority visible version
+            💡 In grouped mode, all versions of a variable share the same color and visibility setting
           </p>
         </div>
       </CardContent>
