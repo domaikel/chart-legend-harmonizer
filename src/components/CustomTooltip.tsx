@@ -11,8 +11,11 @@ interface CustomTooltipProps {
 
 export const CustomTooltip = ({ active, payload, label, config, series }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
-    // Filter payload to only show the hovered series
-    const hoveredEntry = payload[0]; // Only show the first (hovered) entry
+    // Find the entry that corresponds to the actually hovered line
+    // Recharts passes the hovered entry with strokeDasharray or activeDot properties
+    const hoveredEntry = payload.find(entry => 
+      entry.strokeDasharray || entry.payload?.activeDot
+    ) || payload[0]; // Fallback to first entry if no specific hover indicator
     
     return (
       <div className="bg-background border border-border rounded-lg shadow-lg p-4">
