@@ -166,13 +166,13 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
         fontSize: '12px'
       },
       formatter: function() {
-        const point = this.point;
+        const point = this;
         const seriesName = this.series.name;
         const value = point.y;
         
         return `
           <div style="padding: 8px;">
-            <div style="font-weight: 600; margin-bottom: 8px; color: hsl(var(--foreground));">${point.category}</div>
+            <div style="font-weight: 600; margin-bottom: 8px; color: hsl(var(--foreground));">${point.x}</div>
             <div style="display: flex; align-items: center; gap: 8px;">
               <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${this.series.color};"></div>
               <span style="color: hsl(var(--muted-foreground));">${seriesName}:</span>
