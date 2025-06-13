@@ -109,7 +109,9 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
             radius: 6
           }
         }
-      }
+      },
+      // Hide from legend if we're in grouped mode - we'll use custom legend
+      showInLegend: config.groupByVersion
     };
   });
 
@@ -184,7 +186,7 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
       useHTML: true
     },
     legend: {
-      enabled: config.showLegend,
+      enabled: config.showLegend && config.groupByVersion,
       align: 'center',
       verticalAlign: 'bottom',
       layout: 'horizontal',
@@ -200,16 +202,7 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
       symbolWidth: 12,
       symbolHeight: 12,
       symbolRadius: 6,
-      useHTML: true,
-      labelFormatter: function() {
-        if (config.groupByVersion) {
-          return `${this.name}`;
-        } else {
-          // For grouped mode, we need custom rendering
-          const variable = this.name?.split(' (')[0];
-          return variable;
-        }
-      }
+      useHTML: true
     },
     plotOptions: {
       line: {
@@ -240,6 +233,9 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
         highcharts={Highcharts}
         options={options}
       />
+      {config.showLegend && !config.groupByVersion && (
+        <CustomLegend config={config} series={legendSeries} chartSeries={chartSeries} />
+      )}
     </div>
   );
 };
