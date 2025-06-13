@@ -116,7 +116,7 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
   const options: Highcharts.Options = {
     chart: {
       type: 'line',
-      height: 384, // 96 * 4 (24rem)
+      height: config.showLegend ? 450 : 384, // Increase height when legend is shown
       backgroundColor: 'transparent',
       style: {
         fontFamily: 'inherit'
@@ -184,7 +184,32 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
       useHTML: true
     },
     legend: {
-      enabled: false // We use custom legend
+      enabled: config.showLegend,
+      align: 'center',
+      verticalAlign: 'bottom',
+      layout: 'horizontal',
+      margin: 20,
+      itemStyle: {
+        color: 'hsl(var(--foreground))',
+        fontSize: '12px',
+        fontWeight: 'normal'
+      },
+      itemHoverStyle: {
+        color: 'hsl(var(--foreground))'
+      },
+      symbolWidth: 12,
+      symbolHeight: 12,
+      symbolRadius: 6,
+      useHTML: true,
+      labelFormatter: function() {
+        if (config.groupByVersion) {
+          return `${this.name}`;
+        } else {
+          // For grouped mode, we need custom rendering
+          const variable = this.name?.split(' (')[0];
+          return variable;
+        }
+      }
     },
     plotOptions: {
       line: {
@@ -210,14 +235,11 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
   };
 
   return (
-    <div className="w-full h-96">
+    <div className="w-full">
       <HighchartsReact
         highcharts={Highcharts}
         options={options}
       />
-      {config.showLegend && (
-        <CustomLegend config={config} series={legendSeries} chartSeries={chartSeries} />
-      )}
     </div>
   );
 };
