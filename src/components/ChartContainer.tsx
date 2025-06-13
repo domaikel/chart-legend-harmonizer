@@ -92,11 +92,12 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
   // Convert data to Highcharts format
   const categories = data.map(d => d.period);
   
-  const highchartsSeries = chartSeries.map(s => {
+  const highchartsSeries: Highcharts.SeriesOptionsType[] = chartSeries.map(s => {
     const dataKey = getDataKey(s);
     const seriesData = data.map(d => d[dataKey] as number || null);
     
     return {
+      type: 'line',
       name: `${s.variable} (${s.version})`,
       data: seriesData,
       color: s.color,
