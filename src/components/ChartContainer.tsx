@@ -1,7 +1,7 @@
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import Highcharts from 'highcharts';
+import HighchartsReact from 'highcharts-react-official';
 import { ChartConfig, SeriesItem, ChartDataPoint } from "@/types/chart";
-import { CustomTooltip } from "./CustomTooltip";
 import { CustomLegend } from "./CustomLegend";
 
 interface ChartContainerProps {
@@ -89,43 +89,134 @@ export const ChartContainer = ({ data, config, series }: ChartContainerProps) =>
     return `${series.variable}-${series.version}`;
   };
 
+  // Convert data to Highcharts format
+  const categories = data.map(d => d.period);
+  
+  const highchartsSeries = chartSeries.map(s => {
+    const dataKey = getDataKey(s);
+    const seriesData = data.map(d => d[dataKey] as number || null);
+    
+    return {
+      name: `${s.variable} (${s.version})`,
+      data: seriesData,
+      color: s.color,
+      marker: {
+        enabled: true,
+        radius: 4,
+        states: {
+          hover: {
+            radius: 6
+          }
+        }
+      }
+    };
+  });
+
+  const options: Highcharts.Options = {
+    chart: {
+      type: 'line',
+      height: 384, // 96 * 4 (24rem)
+      backgroundColor: 'transparent',
+      style: {
+        fontFamily: 'inherit'
+      }
+    },
+    title: {
+      text: undefined
+    },
+    xAxis: {
+      categories,
+      gridLineWidth: 1,
+      gridLineDashStyle: 'Dash',
+      lineColor: 'hsl(var(--border))',
+      tickColor: 'hsl(var(--border))',
+      labels: {
+        style: {
+          color: 'hsl(var(--muted-foreground))',
+          fontSize: '12px'
+        }
+      }
+    },
+    yAxis: {
+      title: {
+        text: undefined
+      },
+      gridLineWidth: 1,
+      gridLineDashStyle: 'Dash',
+      lineColor: 'hsl(var(--border))',
+      labels: {
+        style: {
+          color: 'hsl(var(--muted-foreground))',
+          fontSize: '12px'
+        },
+        formatter: function() {
+          return `$${(this.value as number / 1000).toFixed(0)}k`;
+        }
+      }
+    },
+    tooltip: {
+      shared: false, // Only show data for hovered series
+      backgroundColor: 'hsl(var(--background))',
+      borderColor: 'hsl(var(--border))',
+      borderRadius: 8,
+      shadow: true,
+      style: {
+        color: 'hsl(var(--foreground))',
+        fontSize: '12px'
+      },
+      formatter: function() {
+        const point = this.point;
+        const seriesName = this.series.name;
+        const value = point.y;
+        
+        return `
+          <div style="padding: 8px;">
+            <div style="font-weight: 600; margin-bottom: 8px; color: hsl(var(--foreground));">${point.category}</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${this.series.color};"></div>
+              <span style="color: hsl(var(--muted-foreground));">${seriesName}:</span>
+              <span style="font-weight: 500;">$${value?.toLocaleString()}</span>
+            </div>
+          </div>
+        `;
+      },
+      useHTML: true
+    },
+    legend: {
+      enabled: false // We use custom legend
+    },
+    plotOptions: {
+      line: {
+        lineWidth: 2,
+        states: {
+          hover: {
+            lineWidth: 2
+          }
+        },
+        marker: {
+          states: {
+            hover: {
+              enabled: true
+            }
+          }
+        }
+      }
+    },
+    series: highchartsSeries,
+    credits: {
+      enabled: false
+    }
+  };
+
   return (
     <div className="w-full h-96">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-          <XAxis 
-            dataKey="period" 
-            className="text-sm text-muted-foreground"
-            tick={{ fontSize: 12 }}
-          />
-          <YAxis 
-            className="text-sm text-muted-foreground"
-            tick={{ fontSize: 12 }}
-            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-          />
-          <Tooltip 
-            content={<CustomTooltip config={config} series={series} />}
-            cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
-          />
-          {config.showLegend && (
-            <Legend 
-              content={<CustomLegend config={config} series={legendSeries} chartSeries={chartSeries} />}
-            />
-          )}
-          {chartSeries.map((s, index) => (
-            <Line
-              key={s.id}
-              type="monotone"
-              dataKey={getDataKey(s)}
-              stroke={s.color}
-              strokeWidth={2}
-              dot={{ fill: s.color, strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: s.color, strokeWidth: 2 }}
-            />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+      <HighchartsReact
+        highcharts={Highcharts}
+        options={options}
+      />
+      {config.showLegend && (
+        <CustomLegend config={config} series={legendSeries} chartSeries={chartSeries} />
+      )}
     </div>
   );
 };
